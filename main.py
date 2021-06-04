@@ -1,3 +1,10 @@
+try:
+    import pygame_sdl2
+    pygame_sdl2.import_as_pygame()
+except ImportError:
+    pass
+
+
 import pygame
 import os
 import random
@@ -10,7 +17,7 @@ pygame.font.init()
 
 WIDTH, HEIGHT = 740, 740
 WIN = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("SPACE SHOOTER!!!")
+pygame.display.set_caption("BERK INVADERS!!!")
 
 # Load images
 RED_SPACE_SHIP = pygame.image.load(
@@ -62,7 +69,7 @@ class Laser:
 class Ship:
     COOLDOWN = 30
 
-    def __init__(self, x, y, health=100):
+    def __init__(self, x, y, health=100,):
         self.x = x
         self.y = y
         self.health = health
@@ -70,6 +77,7 @@ class Ship:
         self.ship_laser = None
         self.lasers = []
         self.cool_down_counter = 0
+        self.score = 0
 
     def draw(self, window):
         window.blit(self.ship_img, (self.x, self.y))
@@ -113,7 +121,7 @@ class Player(Ship):
         self.mask = pygame.mask.from_surface(self.ship_img)
         self.max_health = health
 
-    def move_lasers(self, vel, objs):
+    def move_lasers(self, vel, objs, score):
         self.cooldown()
         for laser in self.lasers:
             laser.move(vel)
@@ -123,6 +131,7 @@ class Player(Ship):
                 for obj in objs:
                     if laser.collision(obj):
                         objs.remove(obj)
+                        score += 1
                         # here make explosion & sound
                         self.lasers.remove(laser)
 
@@ -180,6 +189,8 @@ def main():
     enemies = []
     wave_length = 5
     enemy_vel = 1
+    global score
+    score = -10
 
     player_vel = 5
     laser_vel = 4
@@ -197,8 +208,10 @@ def main():
 
         lives_label = main_font.render(f"Lives: {lives}", 1, (255, 255, 255))
         level_label = main_font.render(f"Level: {level}", 1, (255, 255, 255))
+        score_label = main_font.render(f"Score: {score}", 1, (255, 255, 255))
         WIN.blit(lives_label, (20, 10), )
         WIN.blit(level_label, (WIDTH - level_label.get_width() - 20, 10))
+        WIN.blit(score_label, (WIDTH - score_label.get_width() - 20, 60))
         for enemy in enemies:
             enemy.draw(WIN)
 
@@ -207,13 +220,14 @@ def main():
         if lost:
             lost_label = lost_font.render(
                 "You Fucking Lost!", 1, (255, 255, 255))
-            WIN.blit(lost_label, (WIDTH/2 - lost_label.get_width()/2, 350))
+
+            score_final_label = main_font.render(
+                "Your score was {}".format(score), 1, (255, 255, 255))
+            WIN.blit(lost_label, (WIDTH/2 - lost_label.get_width()/2, 200))
+            WIN.blit(score_final_label, (WIDTH/2 -
+                     score_final_label.get_width()/2, 350))
 
         pygame.display.update()
-
-        def reset():
-            global lives
-            lives = 6
 
     while run:
         clock.tick(FPS)
@@ -238,19 +252,20 @@ def main():
                 enemy = Enemy(random.randrange(50, WIDTH-100),
                               random.randrange(-1500, -100), random.choice(["red", "blue", "green", ]))
                 enemies.append(enemy)
+                score += 1
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
 
         keys = pygame.key.get_pressed()
-        if keys[pygame.K_a] and player.x - player_vel > 0:  # left
+        if keys[pygame.K_LEFT] and player.x - player_vel > 0:  # left
             player.x -= player_vel
-        if keys[pygame.K_d] and player.x + player_vel + player.get_width() < WIDTH:  # right
+        if keys[pygame.K_RIGHT] and player.x + player_vel + player.get_width() < WIDTH:  # right
             player.x += player_vel
-        if keys[pygame.K_w] and player.y - player_vel > 0:  # up
+        if keys[pygame.K_UP] and player.y - player_vel > 0:  # up
             player.y -= player_vel
-        if keys[pygame.K_s] and player.y + player_vel + player.get_height() + 15 < HEIGHT:  # down
+        if keys[pygame.K_DOWN] and player.y + player_vel + player.get_height() + 15 < HEIGHT:  # down
             player.y += player_vel
         if keys[pygame.K_SPACE]:
             player.shoot()
@@ -265,11 +280,14 @@ def main():
             if collide(enemy, player):
                 player.health -= 10
                 enemies.remove(enemy)
+                score -= 2
+
             elif enemy.y + enemy.get_height() > HEIGHT:
                 lives -= 1
                 enemies.remove(enemy)
+                score -= 2
 
-        player.move_lasers(-laser_vel, enemies)
+        player.move_lasers(-laser_vel, enemies, score)
 
 
 def main_menu():
